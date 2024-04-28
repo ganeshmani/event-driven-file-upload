@@ -41,7 +41,6 @@ provider:
       Resource: '*'
   environment:
     AWS_S3_BUCKET: file-upload-gm-bucket
-    TINYBIRD_API_KEY: ${env:TINYBIRD_API_KEY}
 functions:
   s3EventHandler:
     handler: src/s3-listener.handler
