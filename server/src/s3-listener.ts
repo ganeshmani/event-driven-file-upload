@@ -68,27 +68,6 @@ export const handler: Handler<S3Event, Context> = (
       //   callback(error);
       //   return;
       // }
-
-      console.log('insertResponse', insertResponse);
-      console.log('process.env.TINYBIRD_API_KEY', process.env.TINYBIRD_API_KEY);
-
-      const response = await fetch(
-        'https://api.us-east.aws.tinybird.co/v0/events?name=file_uploaded_success',
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.TINYBIRD_API_KEY}`,
-          },
-          body: JSON.stringify({
-            id: insertResponse?.id,
-            uniqueFileName,
-            originalFileName,
-            contentType,
-          }),
-        },
-      );
-
-      const data = await response.json();
     })
     .catch((error) => {
       console.error('Error coming from headobject: ', error);
