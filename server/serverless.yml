@@ -1,0 +1,115 @@
+service: file-service
+frameworkVersion: '3'
+useDotenv: true
+environment:
+  TINYBIRD_API_KEY: ${env.TINYBIRD_API_KEY}
+
+excludeDevDependencies: true
+individually: true
+patterns:
+  - '!node_modules/@aws-sdk/**'
+  - '!node_modules/aws-sdk/**'
+  - '!node_modules/**/node_modules/aws-sdk/**'
+  - '!node_modules/**/node_modules/@aws-sdk/**'
+  - '!node_modules/**/node_modules/**/node_modules/aws-sdk/**'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  timeout: 60
+  httpApi:
+    cors: true
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 's3:*'
+      Resource: '*'
+    - Effect: 'Allow'
+      Action:
+        - 'lambda:InvokeFunction'
+      Resource: '*'
+    - Effect: 'Allow'
+      Action:
+        - 'kms:Decrypt'
+      Resource: '*'
+    - Effect: 'Allow'
+      Action:
+        - 'dynamodb:PutItem'
+        - 'dynamodb:GetItem'
+        - 'dynamodb:DeleteItem'
+        - 'dynamodb:Scan'
+      Resource: '*'
+  environment:
+    AWS_S3_BUCKET: file-upload-gm-bucket
+    TINYBIRD_API_KEY: ${env:TINYBIRD_API_KEY}
+functions:
+  s3EventHandler:
+    handler: src/s3-listener.handler
+    events:
+      - s3:
+          bucket: file-upload-gm-bucket
+          event: s3:ObjectCreated:*
+          existing: true
+  httpApiHandler:
+    handler: src/handler.handler
+    events:
+      - httpApi: '*'
+
+plugins:
+  - serverless-offline
+  - serverless-s3-local
+  - serverless-plugin-typescript
+
+resources:
+  Resources:
+    S3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: file-upload-gm-bucket
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+    FilesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: files
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: originalFileName
+            AttributeType: S
+        GlobalSecondaryIndexes:
+          - IndexName: FileNameIndex
+            KeySchema:
+              - AttributeName: originalFileName
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+
+custom:
+  serverless-offline:
+    s3:
+      host: localhost # Optional: Set the S3 host to emulate locally
+      port: 4569 # Optional: Set the port number for the S3 service
+      directory: /tmp
+      skipCacheInvalidation: true # Optional: Disable cache invalidation
+      cors: true
